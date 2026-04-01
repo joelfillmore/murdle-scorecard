@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Murdle Scorecard</title>
+<style>
+  :root {
+    --blue: #4fa8b8;
+    --red: #d94f4f;
+    --green: #3a8a5c;
+    --dark: #222;
+    --border-color: #333;
+    --hdr-w: 52px;
+    --cell-w: calc((100vw - 12px - var(--hdr-w)) / 4);
+    --cell-h: calc(var(--cell-w) * 0.75);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f0e8;
+    color: var(--dark);
+    overflow-x: hidden;
+    padding: 6px;
+  }
+
+  .icon-svg { width: 32px; height: 32px; display: block; margin: 0 auto; }
+
+  /* ====== GRIDS ====== */
+  .grid-section { margin-bottom: 16px; }
+
+  /* Column icons row (above the colored bar) */
+  .col-icons-row {
+    display: flex;
+    padding-left: calc(var(--hdr-w) + 18px); /* row-icons-col + row-label-bar */
+  }
+  .col-icon-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2px 0;
+  }
+  .col-icon-item .icon-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #444;
+    line-height: 1;
+    margin-top: 3px;
+  }
+
+  /* Row icons column (left of the colored bar) */
+  .row-icons-col {
+    display: flex;
+    flex-direction: column;
+    width: var(--hdr-w);
+    flex-shrink: 0;
+  }
+  .row-icon-item {
+    height: var(--cell-h);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-top: 2px solid transparent;
+  }
+  .row-icon-item .icon-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #444;
+    line-height: 1;
+    margin-top: 3px;
+  }
+
+  .grid-label-row {
+    display: flex;
+  }
+  .grid-label-corner {
+    width: calc(var(--hdr-w) + 18px);
+    flex-shrink: 0;
+  }
+  .category-label {
+    text-align: center;
+    color: white;
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 0;
+    flex: 1;
+  }
+  .category-label.top {
+    border-radius: 5px 5px 0 0;
+  }
+  .category-label.suspects { background: var(--blue); }
+  .category-label.weapons { background: var(--red); }
+  .category-label.locations { background: var(--green); }
+
+  /* Row label bar (vertical text on left) */
+  .row-label-bar {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    text-align: center;
+    color: white;
+    font-weight: 800;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 2px;
+    width: 18px;
+    flex-shrink: 0;
+    border-radius: 0 5px 5px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .row-label-bar.weapons { background: var(--red); }
+  .row-label-bar.locations { background: var(--green); }
+
+  .grid-with-row-label {
+    display: flex;
+  }
+  .grid-with-row-label .grid-table { flex: 1; }
+
+  .grid-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+
+  .grid-table td, .grid-table th {
+    border: 2px solid var(--border-color);
+    text-align: center;
+    vertical-align: middle;
+    padding: 0;
+  }
+
+  .grid-table .cell {
+    height: var(--cell-h);
+    max-height: var(--cell-h);
+    min-height: var(--cell-h);
+    cursor: pointer;
+    background: white;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+  }
+  .grid-table .cell:active { background: #eee; }
+
+  .cell-content {
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  .cell[data-state="x"] .cell-content { color: var(--red); }
+  .cell[data-state="check"] .cell-content { color: var(--green); }
+
+  /* No more in-table headers */
+
+  /* ====== MURDLE HEADER ====== */
+  .murdle-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+    margin-bottom: 14px;
+    background: white;
+    border-radius: 8px;
+  }
+  .murdle-header img {
+    height: 44px;
+    width: auto;
+  }
+
+  /* ====== SOLUTION CARDS ====== */
+  .cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 8px;
+    margin-bottom: 16px;
+  }
+
+  .solution-card {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: white;
+    overflow: hidden;
+  }
+
+  .card-inner {
+    display: flex;
+    align-items: center;
+    padding: 10px 10px;
+    gap: 6px;
+  }
+
+  .card-number {
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--dark);
+    line-height: 1;
+    flex-shrink: 0;
+    width: 30px;
+    text-align: center;
+  }
+
+  .card-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex-shrink: 0;
+    margin: 0 10px;
+  }
+  .badge {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    color: white;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    text-align: center;
+  }
+  .badge.guilty { background: #bbb; }
+  .badge.innocent { background: #bbb; }
+  .badge.guilty.active { background: var(--red); }
+  .badge.innocent.active { background: var(--green); }
+
+  .card-slots {
+    display: flex;
+    gap: 0;
+    flex: 1;
+  }
+
+  .card-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .card-slot-circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 9px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .card-slot-circle.s { background: var(--blue); }
+  .card-slot-circle.w { background: var(--red); }
+  .card-slot-circle.l { background: var(--green); }
+
+  .card-slot-icon {
+    width: 34px;
+    height: 34px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+  }
+  .card-slot-icon .icon-svg { width: 22px; height: 22px; }
+  .card-slot-icon.has-value { border-color: #999; background: white; }
+
+  .card-slot-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #888;
+    text-align: center;
+    line-height: 1;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="murdle-header">
+  <img src="https://murdle.com/murdle-ranger.png" alt="MURDLE">
+</div>
+
+<!-- Grid 1: Weapons (rows) x Suspects (cols) -->
+<div class="grid-section">
+  <div class="col-icons-row" id="ws-icons"></div>
+  <div class="grid-label-row">
+    <div class="grid-label-corner"></div>
+    <div class="category-label suspects top">Suspects</div>
+  </div>
+  <div class="grid-with-row-label">
+    <div class="row-icons-col" id="ws-row-icons"></div>
+    <div class="row-label-bar weapons">Weapons</div>
+    <table class="grid-table" id="grid-ws">
+      <tbody id="ws-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Grid 2: Weapons (rows) x Locations (cols) -->
+<div class="grid-section">
+  <div class="col-icons-row" id="wl-icons"></div>
+  <div class="grid-label-row">
+    <div class="grid-label-corner"></div>
+    <div class="category-label locations top">Locations</div>
+  </div>
+  <div class="grid-with-row-label">
+    <div class="row-icons-col" id="wl-row-icons"></div>
+    <div class="row-label-bar weapons">Weapons</div>
+    <table class="grid-table" id="grid-wl">
+      <tbody id="wl-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Grid 3: Locations (rows) x Suspects (cols) -->
+<div class="grid-section">
+  <div class="col-icons-row" id="ls-icons"></div>
+  <div class="grid-label-row">
+    <div class="grid-label-corner"></div>
+    <div class="category-label suspects top">Suspects</div>
+  </div>
+  <div class="grid-with-row-label">
+    <div class="row-icons-col" id="ls-row-icons"></div>
+    <div class="row-label-bar locations">Locations</div>
+    <table class="grid-table" id="grid-ls">
+      <tbody id="ls-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cards-container" id="cards"></div>
+
+<script>
+  // ====== DATA (using PNG icons) ======
+  const suspects = [
+    { icon: 'icons/maj-red.png',       short: 'Major',  name: 'Major Red' },
+    { icon: 'icons/silverton.png',     short: 'Silv',   name: 'Silverton' },
+    { icon: 'icons/dame-obsidian.png', short: 'Dame',   name: 'Dame Obsidian' },
+    { icon: 'icons/vp-mauve.png',      short: 'VP',     name: 'VP Mauve' },
+  ];
+  const weapons = [
+    { icon: 'icons/spy-sat.png',        short: 'Sat',    name: 'Spy Satellite' },
+    { icon: 'icons/bag-cash.png',       short: 'Cash',   name: 'Bag of Cash' },
+    { icon: 'icons/briefcase-nuke.png', short: 'Nuke',   name: 'Briefcase Nuke' },
+    { icon: 'icons/rocket-pants.png',   short: 'Rocket', name: 'Rocket Pants' },
+  ];
+  const locations = [
+    { icon: 'icons/new-aegis.png',       short: 'Aegis',   name: 'New Aegis' },
+    { icon: 'icons/draconia.png',        short: 'Drak',    name: 'Draconia' },
+    { icon: 'icons/mystery-island.png',  short: 'Island',  name: 'Mystery Island' },
+    { icon: 'icons/english-village.png', short: 'Village',  name: 'English Village' },
+  ];
+
+  const states = ['empty', 'x', 'check'];
+  const stateSymbols = { empty: '', x: '\u2715', check: '\u2713' };
+
+  function iconHTML(item) {
+    return `<div class="icon-wrap"><img class="icon-svg" src="${item.icon}" alt="${item.short}"><span class="icon-label">${item.short}</span></div>`;
+  }
+
+  function buildGrid(colIconsId, rowIconsId, tbodyId, colItems, rowItems) {
+    // Column icons (above the bar)
+    const colIcons = document.getElementById(colIconsId);
+    colIcons.innerHTML = colItems.map(c =>
+      `<div class="col-icon-item"><img class="icon-svg" src="${c.icon}" alt="${c.short}"><span class="icon-label">${c.short}</span></div>`
+    ).join('');
+
+    // Row icons (left of the bar)
+    const rowIcons = document.getElementById(rowIconsId);
+    rowIcons.innerHTML = rowItems.map(r =>
+      `<div class="row-icon-item"><img class="icon-svg" src="${r.icon}" alt="${r.short}"><span class="icon-label">${r.short}</span></div>`
+    ).join('');
+
+    // Grid cells only (no headers)
+    const tbody = document.getElementById(tbodyId);
+    rowItems.forEach(() => {
+      const tr = document.createElement('tr');
+      colItems.forEach(() => {
+        const td = document.createElement('td');
+        td.className = 'cell';
+        td.dataset.state = 'empty';
+        td.innerHTML = '<div class="cell-content"></div>';
+        td.addEventListener('click', cycleCell);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  buildGrid('ws-icons', 'ws-row-icons', 'ws-body', suspects, weapons);
+  buildGrid('wl-icons', 'wl-row-icons', 'wl-body', locations, weapons);
+  buildGrid('ls-icons', 'ls-row-icons', 'ls-body', suspects, locations);
+
+  function cycleCell(e) {
+    const cell = e.currentTarget;
+    const idx = states.indexOf(cell.dataset.state);
+    const next = states[(idx + 1) % states.length];
+    cell.dataset.state = next;
+    cell.querySelector('.cell-content').textContent = stateSymbols[next];
+  }
+
+  // ====== SOLUTION CARDS ======
+  const cardsContainer = document.getElementById('cards');
+
+  function getUsedInCategory(category, excludeCardIdx) {
+    const used = new Set();
+    document.querySelectorAll(`.card-slot[data-category="${category}"]`).forEach(slot => {
+      const ci = parseInt(slot.closest('.solution-card').dataset.cardIndex);
+      if (ci !== excludeCardIdx && slot.dataset.value) {
+        used.add(parseInt(slot.dataset.value));
+      }
+    });
+    return used;
+  }
+
+  function getCategoryItems(category) {
+    if (category === 's') return suspects;
+    if (category === 'w') return weapons;
+    return locations;
+  }
+
+  function cycleSlot(e) {
+    const slot = e.currentTarget;
+    const category = slot.dataset.category;
+    const cardIdx = parseInt(slot.closest('.solution-card').dataset.cardIndex);
+    const items = getCategoryItems(category);
+    const used = getUsedInCategory(category, cardIdx);
+    const currentVal = slot.dataset.value ? parseInt(slot.dataset.value) : -1;
+
+    let nextVal = -1;
+    let startSearch = currentVal + 1;
+    for (let i = 0; i < items.length + 1; i++) {
+      const candidate = (startSearch + i) % (items.length + 1);
+      if (candidate === items.length) { nextVal = -1; break; }
+      if (!used.has(candidate)) { nextVal = candidate; break; }
+    }
+
+    const iconEl = slot.querySelector('.card-slot-icon');
+    const labelEl = slot.querySelector('.card-slot-label');
+    if (nextVal === -1) {
+      slot.dataset.value = '';
+      iconEl.innerHTML = '';
+      iconEl.classList.remove('has-value');
+      labelEl.textContent = category === 's' ? 'Suspect' : category === 'w' ? 'Weapon' : 'Location';
+    } else {
+      slot.dataset.value = nextVal;
+      iconEl.innerHTML = `<img class="icon-svg" src="${items[nextVal].icon}" alt="${items[nextVal].short}">`;
+      iconEl.classList.add('has-value');
+      labelEl.textContent = items[nextVal].short;
+    }
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const card = document.createElement('div');
+    card.className = 'solution-card';
+    card.dataset.cardIndex = i;
+    card.innerHTML = `
+      <div class="card-inner">
+        <span class="card-number">${i + 1}</span>
+        <div class="card-badges">
+          <span class="badge guilty" data-type="guilty">Guilty</span>
+          <span class="badge innocent" data-type="innocent">Innocent</span>
+        </div>
+        <div class="card-slots">
+          ${['s','w','l'].map(cat => `
+            <div class="card-slot" data-category="${cat}" data-value="">
+              <div class="card-slot-circle ${cat}">${cat.toUpperCase()}</div>
+              <div class="card-slot-icon"></div>
+              <div class="card-slot-label">${cat === 's' ? 'Suspect' : cat === 'w' ? 'Weapon' : 'Location'}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    card.querySelectorAll('.badge').forEach(b => b.addEventListener('click', () => b.classList.toggle('active')));
+    card.querySelectorAll('.card-slot').forEach(s => s.addEventListener('click', cycleSlot));
+    cardsContainer.appendChild(card);
+  }
+
+  function resetAll() {
+    if (!confirm('Reset scorecard?')) return;
+    document.querySelectorAll('.cell').forEach(c => {
+      c.dataset.state = 'empty';
+      c.querySelector('.cell-content').textContent = '';
+    });
+    document.querySelectorAll('.card-slot').forEach(s => {
+      s.dataset.value = '';
+      s.querySelector('.card-slot-icon').innerHTML = '';
+      s.querySelector('.card-slot-icon').classList.remove('has-value');
+      const cat = s.dataset.category;
+      s.querySelector('.card-slot-label').textContent =
+        cat === 's' ? 'Suspect' : cat === 'w' ? 'Weapon' : 'Location';
+    });
+    document.querySelectorAll('.badge').forEach(b => b.classList.remove('active'));
+  }
+</script>
+</body>
+</html>
