@@ -12,7 +12,7 @@
     --dark: #222;
     --border-color: #333;
     --hdr-w: 52px;
-    --cell-w: calc((100vw - 12px - var(--hdr-w)) / 4);
+    --cell-w: calc((min(100vw, 400px) - 12px - var(--hdr-w)) / 4);
     --cell-h: calc(var(--cell-w) * 0.75);
   }
 
@@ -24,6 +24,8 @@
     color: var(--dark);
     overflow-x: hidden;
     padding: 6px;
+    max-width: 400px;
+    margin: 0 auto;
   }
 
   .icon-svg { width: 32px; height: 32px; display: block; margin: 0 auto; }
